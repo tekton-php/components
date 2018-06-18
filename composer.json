@@ -1,0 +1,17 @@
+{
+    "name": "tekton/components",
+    "type": "library",
+    "license": "MIT",
+    "description": "A component system meant to work together with gulp-single-file-components.",
+    "homepage": "https://github.com/tekton-php/components",
+    "autoload": {
+        "psr-4": {
+            "Tekton\\Components\\": "src/"
+        }
+    },
+    "minimum-stability": "dev",
+    "require": {
+        "php": ">=7.0.0",
+        "tekton/support": "^2.0.0"
+    }
+}
