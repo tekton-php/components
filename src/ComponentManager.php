@@ -139,16 +139,21 @@ class ComponentManager
 
     public function include($name, $data = [])
     {
-        if ($name == 'hero') {
-            $stop = 'here';
-        }
-
-
-        // Either manage provided component or find by name
+        // Provided component
         if ($name instanceof ComponentContract) {
             $component = $name;
             $name = $component->getName();
         }
+        // Provided component matching name
+        elseif (isset($this->components[$name]) && $data instanceof ComponentContract) {
+            if ($component->getName() != $name) {
+                throw new Exception("Component doesn't match type: ".$name);
+            }
+
+            $component = $data;
+            $data = [];
+        }
+        // Find registered component by name
         elseif (isset($this->components[$name])) {
             $component = $this->components[$name];
         }
