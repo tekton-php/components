@@ -216,6 +216,18 @@ Now the contents of the script tag will be executed only when it's included and 
 
 You can also set the attribute "singleton" on the script tag to make sure that the script is only executed once, no matter how many components are included.
 
+## Custom Renderers
+
+In order to integrate the rendering of the component into different templating systems you will most likely extend the Component class (implement ComponentInterface) and change the class the ComponentManager uses to instance Components automatically.
+
+```
+// Either set it when creating the ComponentManager
+$manager = new ComponentManager($compiler, MyCustomComponent::class);
+
+// Or after
+$manager->setComponentClass(MyCustomComponent::class);
+```
+
 ## License
 
 MIT
