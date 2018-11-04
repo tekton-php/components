@@ -218,7 +218,7 @@ You can also set the attribute "singleton" on the script tag to make sure that t
 
 ### Custom Renderers
 
-In order to integrate the rendering of the component into different templating systems you will most likely extend the Component class (implement ComponentInterface) and change the class the ComponentManager uses to instance Components automatically.
+In order to integrate the rendering of the component into different templating systems you will most likely need to extend the Component class (implement ComponentInterface) and change the class the ComponentManager uses to instance Components automatically.
 
 ```
 // Either set it when creating the ComponentManager
