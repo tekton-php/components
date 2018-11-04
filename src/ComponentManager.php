@@ -1,29 +1,56 @@
 <?php namespace Tekton\Components;
 
 use Tekton\Components\Component;
-use Tekton\Components\Contracts\Component as ComponentContract;
+use Tekton\Components\ComponentInfo;
+use Tekton\Components\ComponentInterface;
 use Exception;
 
 class ComponentManager
 {
-    protected $app;
+    protected $compiler;
     protected $components = [];
-    protected $typeMap = [];
     protected $included = [];
     protected $instances = [];
+    protected $componentClass;
 
-    public function __construct($app, $typeMap = null)
+    public function __construct($compiler = null, $componentClass = null)
     {
-        $this->app = $app;
-        $this->typeMap = $typeMap ?? [
-            'template' => 'php',
-            'styles' => 'css',
-            'scripts' => 'js',
-        ];
+        $this->compiler = $compiler;
+
+        if (is_string($componentClass) && ! empty($componentClass)) {
+            $this->setComponentClass($componentClass);
+        }
+        else {
+            $this->setComponentClass(Component::class);
+        }
     }
 
-    public function find($path)
+    public function setComponentClass(string $class)
     {
+        $this->componentClass = $class;
+    }
+
+    public function getComponentClass()
+    {
+        return $this->componentClass;
+    }
+
+    protected function createComponent($resources)
+    {
+        $class = $this->componentClass;
+        return new $class($resources);
+    }
+
+    public function find($path, $typeMap = null, $register = false)
+    {
+        if (! is_array($typeMap)) {
+            $typeMap = [
+                'template' => ['html', 'php'],
+                'styles' => 'css',
+                'scripts' => 'js',
+            ];
+        }
+
         $files = [];
         $locations = (! is_array($path)) ? [$path] : $path;
 
@@ -48,50 +75,36 @@ class ComponentManager
 
         foreach ($files as $base => $baseFiles) {
             foreach ($baseFiles as $file) {
-                extract($info = $this->getResourceInfo($file, $base));
+                $info = new ComponentInfo($file, $base);
 
-                if (! isset($components[$id])) {
-                    $resource = $this->assembleResource($info);
-                    $components[$id] = $resource;
+                if (! isset($components[$info->id])) {
+                    $resource = $this->assembleResource($info, $typeMap);
+                    $components[$info->id] = $resource;
                 }
             }
+        }
+
+        // If asked to register directly
+        if ($register) {
+            return $this->register($components);
         }
 
         return $components;
     }
 
-    protected function getResourceInfo($file, $base)
+    protected function assembleResource($info, $typeMap)
     {
-        $name = strstr(basename($file), '.', true);
-        $rel = rel_path($file, $base);
-        $dir = (dirname($rel) == '.') ? '' : dirname($rel);
-        $id = ($dir) ? str_replace(DS, '.', $dir).'.'.$name : $name;
-        $partial = ($dir) ? $base.DS.$dir.DS.$name : $base.DS.$name;
-
-        return [
-            'name' => $name,
-            'id' => $id,
-            'path' => $file,
-            'base' => $base,
-            'partial' => $partial,
-            'directory' => $dir,
-        ];
-    }
-
-    protected function assembleResource($info)
-    {
-        extract($info);
         $parts = [];
 
-        foreach ($this->typeMap as $type => $format) {
+        foreach ($typeMap as $type => $format) {
             // Support multiple types with pipe character
-            if (str_contains($format, '|')) {
-                foreach (explode('|', $format) as $optionalFormat) {
-                    $parts[$type] = (file_exists($file = $partial.'.'.$optionalFormat)) ? $file : null;
+            if (is_array($format)) {
+                foreach ($format as $optionalFormat) {
+                    $parts[$type] = (file_exists($file = $info->partial.'.'.$optionalFormat)) ? $file : null;
                 }
             }
             else {
-                $parts[$type] = (file_exists($file = $partial.'.'.$format)) ? $file : null;
+                $parts[$type] = (file_exists($file = $info->partial.'.'.$format)) ? $file : null;
             }
         }
 
@@ -114,24 +127,64 @@ class ComponentManager
         return $this->instances;
     }
 
-    public function register($name, Component $component)
+    public function register($name, $component = null)
     {
+        // Register by list of components
         if (is_array($name)) {
             $result = true;
+            $basePath = $component;
 
             foreach ($name as $name => $component) {
-                $current = $this->register($name, $component);
+                // If non-associative array we register component by path
+                // this requires a compiler to have been set
+                if (is_int($name)) {
+                    $current = $this->register($component, $basePath);
+                }
+                else {
+                    $current = $this->register($name, $component);
+                }
+
                 $result = (! $current) ? false : $result;
             }
 
             return $result;
         }
 
-        if (! isset($this->components[$name])) {
+        // Register by name and component instance
+        if (! isset($this->components[$name]) && $component instanceof ComponentInterface) {
             $component->setName($name);
             $this->components[$name] = $component;
 
             return true;
+        }
+        // Register by name and component path or component path and base path
+        elseif (is_string($name) && (is_null($component) || is_string($component))) {
+            if (! $this->compiler) {
+                throw new Exception('No compiler has been set in '.self::class);
+            }
+
+            // Component path and base path
+            if (file_exists($name)) {
+                $result = $this->compiler->compile($name, $component);
+                $keys = array_keys($result);
+                $name = reset($keys);
+                $component = $this->createComponent($result[$name]);
+
+                return $this->register($name, $component);
+            }
+            // Name and component path
+            else {
+                $result = $this->compiler->compile($component);
+                $resources = reset($result);
+                $component = $this->createComponent($component);
+
+                return $this->register($name, $component);
+            }
+        }
+        // Register component by name and resources array
+        elseif (is_string($name) && is_array($component)) {
+            $component = $this->createComponent($component);
+            return $this->register($name, $component);
         }
 
         return false;
@@ -140,12 +193,12 @@ class ComponentManager
     public function include($name, $data = [])
     {
         // Provided component
-        if ($name instanceof ComponentContract) {
+        if ($name instanceof ComponentInterface) {
             $component = $name;
             $name = $component->getName();
         }
         // Provided component matching name
-        elseif (isset($this->components[$name]) && $data instanceof ComponentContract) {
+        elseif (isset($this->components[$name]) && $data instanceof ComponentInterface) {
             if ($component->getName() != $name) {
                 throw new Exception("Component doesn't match type: ".$name);
             }

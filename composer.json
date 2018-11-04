@@ -2,7 +2,14 @@
     "name": "tekton/components",
     "type": "library",
     "license": "MIT",
-    "description": "A component system meant to work together with gulp-single-file-components.",
+    "description": "A component system that can either work together with gulp-single-file-components or compile files on its own.",
+    "keywords": [
+        "vue",
+        "component",
+        "single-file-components",
+        "tekton",
+        "dynamis"
+    ],
     "homepage": "https://github.com/tekton-php/components",
     "autoload": {
         "psr-4": {
@@ -12,6 +19,11 @@
     "minimum-stability": "dev",
     "require": {
         "php": ">=7.0.0",
-        "tekton/support": "^2.0.0"
+        "tekton/support": "^2.0.0",
+        "artem_c/emmet": "~1.0",
+        "leafo/scssphp": "^0.7.7"
+    },
+    "scripts": {
+        "test": ["@php -S localhost:8000 -t tests/"]
     }
 }

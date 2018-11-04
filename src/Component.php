@@ -1,11 +1,11 @@
 <?php namespace Tekton\Components;
 
-use Tekton\Components\Contracts\Component as ComponentContract;
+use Tekton\Components\ComponentInterface;
 use ErrorException;
 use Exception;
 use Throwable;
 
-class Component implements ComponentContract
+class Component implements ComponentInterface
 {
     protected $id;
     protected $name;
@@ -91,10 +91,11 @@ class Component implements ComponentContract
                 include $__path;
             }
             else {
-                echo \file_get_contents($__path);
+                echo file_get_contents($__path);
             }
 
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             // Do nothing
         }
 

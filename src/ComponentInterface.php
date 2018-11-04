@@ -1,8 +1,6 @@
-<?php namespace Tekton\Components\Contracts;
+<?php namespace Tekton\Components;
 
-use Tekton\Support\Contracts\Manifest;
-
-interface Component
+interface ComponentInterface
 {
     function setId(string $id);
 
