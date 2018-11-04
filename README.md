@@ -142,7 +142,7 @@ foreach ($manager->includedResources('script') as $name => $script) {
 ### Filters
 
 Filters run on the registered tags upon compilation and can use the tag attributes to determine if they are supposed to run or not (e.g. lang="scss" on the style tag). They are configured to run either pre or post the tag processes the tag content. To enable SCSS compilation for the style tag you can do this:
-<?
+
 ```php
 use Tekton\Components\ComponentManager;
 use Tekton\Components\ComponentCompiler;
