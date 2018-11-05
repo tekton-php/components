@@ -183,7 +183,7 @@ $compiler->registerTags('script', (new ScriptTag)->addPostFilter(new ScriptScope
 $manager = new ComponentManager($compiler);
 ```
 
-The template scope supports [Emmet-like syntax](https://github.com/artemBilik/emmet) to manipulate the automatically created container element.
+The template scope supports [Emmet-like](https://docs.emmet.io/) syntax (`div#myId.myclass[rel=myAttr]`) to configure the automatically created container element. It only allows container, id, class and attributes. Any of these can be excluded but they must be in that order. Multiple classes and attributes are allowed.
 
 ```html
 <template container="section[rel=home]" src="hero/full-page.html" />

@@ -20,7 +20,6 @@
     "require": {
         "php": ">=7.0.0",
         "tekton/support": "^2.0.0",
-        "artem_c/emmet": "~1.0",
         "leafo/scssphp": "^0.7.7"
     },
     "scripts": {
