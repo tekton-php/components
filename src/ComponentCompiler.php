@@ -54,13 +54,16 @@ class ComponentCompiler
 
     public function clearCache()
     {
+        $this->componentMap = [];
+        $this->cacheMap = [];
+        
         $di = new RecursiveDirectoryIterator($this->cacheDir, FilesystemIterator::SKIP_DOTS);
         $ri = new RecursiveIteratorIterator($di, RecursiveIteratorIterator::CHILD_FIRST);
 
         foreach ($ri as $file) {
             $file->isDir() ? rmdir($file->getPathname()) : unlink($file->getPathname());
         }
-        
+
         return true;
     }
 
