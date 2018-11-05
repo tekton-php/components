@@ -61,9 +61,7 @@ $manager->register([
 // Register by name and component instance
 $manager->register('button', new Component(['template' => 'cache/button.html']));
 
-// Register by name and component path
-$manager->register('button', 'button.vue');
-// or component path and base path
+// Register by component path and optional base path
 $manager->register('components/button.vue', 'components/');
 
 // Register component by name and resources array
@@ -74,9 +72,13 @@ $manager->register('button', [
 ]);
 ```
 
-If you have a directory with pre-compiled components you can process the directory contents and create an associative array with component names and resources by matching file extensions to a map:
+You can retrieve all the components that have been compiled by the compiler in an associative array with names and resources, or if you have a directory with pre-compiled components, created externally, you can process the directory contents by matching file extensions to a map:
 
 ```php
+// From the compiler
+$components = $compiler->getComponentMap();
+
+// Or
 $components = $manager->find('cache/', [
     'template' => ['html', 'php'], // Priority goes from end to beginning
     'scripts' => 'js',

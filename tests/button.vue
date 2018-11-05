@@ -1,4 +1,4 @@
-<template lang="php">
+<template lang="blade">
     <button>Text</button>
 </template>
 

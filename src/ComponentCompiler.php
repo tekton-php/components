@@ -1,22 +1,67 @@
 <?php namespace Tekton\Components;
 
-use Tekton\Components\Tags\TagInfo;
-use DOMDocument;
 use Exception;
+use DOMDocument;
+use FilesystemIterator;
+use RecursiveIteratorIterator;
+use RecursiveDirectoryIterator;
+
+use Tekton\Components\Tags\TagInfo;
+use Tekton\Components\ComponentInfo;
 
 class ComponentCompiler
 {
     protected $cacheDir;
+    protected $cacheMap = [];
+    protected $cacheMapPath;
+    protected $componentMapPath;
+    protected $componentMap = [];
     protected $tags;
 
     public function __construct($cacheDir, $scoped = false)
     {
         $this->cacheDir = $cacheDir;
+        $this->cacheMapPath = $cacheDir.DS.'_cache-map.php';
+        $this->componentMapPath = $cacheDir.DS.'_component-map.php';
 
         if (! file_exists($this->cacheDir)) {
             mkdir($this->cacheDir, 0775, true);
             $this->cacheDir = realpath($cacheDir);
         }
+
+        if (file_exists($this->componentMapPath)) {
+            $this->componentMap = include $this->componentMapPath;
+        }
+        if (file_exists($this->cacheMapPath)) {
+            $this->cacheMap = include $this->cacheMapPath;
+        }
+    }
+
+    public function getComponentMap()
+    {
+        return $this->componentMap;
+    }
+
+    protected function saveComponentMap()
+    {
+        return write_object_to_file($this->componentMapPath, $this->componentMap);
+    }
+
+    protected function saveCacheMap()
+    {
+        return write_object_to_file($this->cacheMapPath, $this->cacheMap);
+    }
+
+    public function clearCache()
+    {
+        $di = new RecursiveDirectoryIterator($this->cacheDir, FilesystemIterator::SKIP_DOTS);
+        $ri = new RecursiveIteratorIterator($di, RecursiveIteratorIterator::CHILD_FIRST);
+
+        foreach ($ri as $file) {
+            $file->isDir() ? rmdir($file->getPathname()) : unlink($file->getPathname());
+        }
+        
+        return true;
     }
 
     public function registerTags($name, $class)
@@ -33,35 +78,14 @@ class ComponentCompiler
         return $this;
     }
 
-    public function compile($path, $basePath = null)
+    protected function parseSingleFileComponent($path, ComponentInfo $componentInfo)
     {
-        // Support compiling files from array
-        if (is_array($path)) {
-            $result = [];
-
-            foreach ($path as $key => $val) {
-                $result = array_merge($result, $this->compile($val, $basePath));
-            }
-
-            return $result;
-        }
-
-        if (! file_exists($path)) {
-            throw new Exception('Component file not found: '.$path);
-        }
-        else {
-            $path = realpath($path);
-        }
-
-        if (is_null($basePath)) {
-            $basePath = dirname($path);
-        }
-
-        // Load component file
+        // Configure DOMDocument
         $xmlStateEntityLoader = libxml_disable_entity_loader(true);
 		$xmlStateInternalErrors = libxml_use_internal_errors(true);
 
-		$doc = new DOMDocument('1.0', 'UTF-8');
+        // Load component file
+        $doc = new DOMDocument('1.0', 'UTF-8');
         $doc->loadHTML('<?xml encoding="utf-8" ?>'.file_get_contents($path));
 
         // Process tags
@@ -102,8 +126,7 @@ class ComponentCompiler
             }
 
             // Save to result
-            $component = new ComponentInfo($path, $basePath);
-            $tags[$tag] = new TagInfo($tag, $tagPath, $content, $attr, $component);
+            $tags[$tag] = new TagInfo($tag, $tagPath, $content, $attr, $componentInfo);
         }
 
         // Reset XML settings
@@ -111,38 +134,83 @@ class ComponentCompiler
 		libxml_use_internal_errors($xmlStateInternalErrors);
 		libxml_clear_errors();
 
-        // Pass content to tag handlers and filters
-        $result[$component->name] = [];
+        return $tags;
+    }
 
-        foreach ($tags as $tag => $info) {
-            if (isset($this->tags[$tag])) {
-                // Create tag handler
-                $tagHandler = $this->tags[$tag];
-                $filename = $tagHandler->getFileName($info);
-                $cachePath = $this->cacheDir.DS.$filename;
-                $result[$component->name][$tag] = $cachePath;
+    public function compile($path, $basePath = null)
+    {
+        $cacheMap = $this->cacheMap;
+        $componentMap = $this->componentMap;
+        $result = [];
+        $files = (array) $path;
 
-                // Skip compilation if cache file is up to date
-                if (file_exists($cachePath)) {
-                    $cacheTime = filemtime($cachePath);
+        // Process files
+        foreach ($files as $key => $path) {
+            // Validate file
+            if (! file_exists($path)) {
+                throw new Exception('Component file not found: '.$path);
+            }
+            else {
+                $path = realpath($path);
+            }
 
-                    if ($cacheTime > filemtime($info->component->path) || (! empty($info->path) && $cacheTime > filemtime($info->path))) {
-                        continue;
+            // Get info
+            $componentInfo = new ComponentInfo($path, $basePath ?? dirname($path));
+            $name = $componentInfo->name;
+
+            // Only compile if cache is invalid
+            if (! isset($this->componentMap[$name]) || ! isset($this->cacheMap[$path]) || filemtime($path) > $this->cacheMap[$path]) {
+                $tags = $this->parseSingleFileComponent($path, $componentInfo);
+
+                if (empty($tags)) {
+                    unset($this->cacheMap[$path]);
+                    continue;
+                }
+
+                // Pass content to tag handlers and filters
+                $result[$name] = [];
+
+                foreach ($tags as $tag => $tagInfo) {
+                    if (isset($this->tags[$tag])) {
+                        // Create tag handler
+                        $tagHandler = $this->tags[$tag];
+                        $filename = $tagHandler->getFileName($tagInfo);
+                        $cachePath = $this->cacheDir.DS.$filename;
+                        $result[$name][$tag] = $cachePath;
+
+                        // Process file
+                        $tagInfo = $tagHandler->processPreFilters($tagInfo);
+                        $tagInfo = $tagHandler->process($tagInfo);
+                        $tagInfo = $tagHandler->processPostFilters($tagInfo);
+
+                        // Write compiled file to cache
+                        if (! file_put_contents($cachePath, $tagInfo->content)) {
+                            throw new Exception('Failed to write cache file: '.$cachePath);
+                        }
+
+                        $this->cacheMap[$path] = filemtime($cachePath);
                     }
                 }
 
-                // Process file
-                $info = $tagHandler->processPreFilters($info);
-                $info = $tagHandler->process($info);
-                $info = $tagHandler->processPostFilters($info);
-
-                // Write compiled file to cache
-                if (! file_put_contents($cachePath, $info->content)) {
-                    throw new Exception('Failed to write cache file: '.$cachePath);
-                }
+                // Update component map
+                $this->componentMap[$name] = $result[$name];
+            }
+            else {
+                // If it's already been compiled we return the component definition
+                $result[$name] = $this->componentMap[$name];
             }
         }
 
+        // If maps have been changed save them
+        if ($this->cacheMap != $cacheMap) {
+            $this->saveCacheMap();
+        }
+        if ($this->componentMap != $componentMap) {
+            $this->saveComponentMap();
+        }
+
+        // Return array with all components that have been compiled with name
+        // as key and their resources as value
         return $result;
     }
 }

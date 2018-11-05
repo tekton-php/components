@@ -35,10 +35,16 @@ class ComponentManager
         return $this->componentClass;
     }
 
-    protected function createComponent($resources)
+    protected function createComponent($name, $resources)
     {
         $class = $this->componentClass;
-        return new $class($resources);
+        $component = new $class($resources);
+
+        if (is_string($name)) {
+            $component->setName($name);
+        }
+
+        return $component;
     }
 
     public function find($path, $typeMap = null, $register = false)
@@ -127,67 +133,67 @@ class ComponentManager
         return $this->instances;
     }
 
-    public function register($name, $component = null)
+    public function compile($path, $basePath = null)
     {
-        // Register by list of components
-        if (is_array($name)) {
-            $result = true;
-            $basePath = $component;
-
-            foreach ($name as $name => $component) {
-                // If non-associative array we register component by path
-                // this requires a compiler to have been set
-                if (is_int($name)) {
-                    $current = $this->register($component, $basePath);
-                }
-                else {
-                    $current = $this->register($name, $component);
-                }
-
-                $result = (! $current) ? false : $result;
-            }
-
-            return $result;
+        if (! $this->compiler) {
+            throw new Exception('No compiler has been set in '.self::class);
         }
 
-        // Register by name and component instance
-        if (! isset($this->components[$name]) && $component instanceof ComponentInterface) {
-            $component->setName($name);
-            $this->components[$name] = $component;
+        return $this->compiler->compile($path, $basePath);
+    }
 
-            return true;
-        }
-        // Register by name and component path or component path and base path
-        elseif (is_string($name) && (is_null($component) || is_string($component))) {
-            if (! $this->compiler) {
-                throw new Exception('No compiler has been set in '.self::class);
+    public function register($primary, $secondary = null)
+    {
+        if (is_string($primary)) {
+            // name + component
+            if (! isset($this->components[$primary]) && $secondary instanceof ComponentInterface) {
+                $component->setName($primary);
+                $this->components[$primary] = $secondary;
             }
-
-            // Component path and base path
-            if (file_exists($name)) {
-                $result = $this->compiler->compile($name, $component);
-                $keys = array_keys($result);
-                $name = reset($keys);
-                $component = $this->createComponent($result[$name]);
-
-                return $this->register($name, $component);
+            // single file component path + base path
+            elseif (file_exists($primary)) {
+                foreach ($this->compile($primary, $secondary) as $name => $resources) {
+                    $this->components[$name] = $this->createComponent($name, $resources);
+                }
             }
-            // Name and component path
+            // Register component by name and resources array
+            elseif (is_array($secondary)) {
+                $this->components[$primary] = $this->createComponent($primary, $secondary);
+            }
             else {
-                $result = $this->compiler->compile($component);
-                $resources = reset($result);
-                $component = $this->createComponent($component);
-
-                return $this->register($name, $component);
+                throw new Exception('Invalid argument for '.self::class.'::'.__FUNCTION__);
             }
         }
-        // Register component by name and resources array
-        elseif (is_string($name) && is_array($component)) {
-            $component = $this->createComponent($component);
-            return $this->register($name, $component);
+        elseif (is_array($primary)) {
+            $component = reset($primary);
+
+            // name => component array
+            if ($component instanceof Component) {
+                foreach ($primary as $name => $component) {
+                    $this->components[$name] = $component;
+                }
+            }
+            // name => resources array
+            elseif (is_array($component)) {
+                foreach ($primary as $name => $resources) {
+                    $this->components[$name] = $this->createComponent($name, $resources);
+                }
+            }
+            // single file component paths array + base path
+            elseif (is_string($component)) {
+                foreach ($this->compile($primary, $secondary) as $name => $resources) {
+                    $this->components[$name] = $this->createComponent($name, $resources);
+                }
+            }
+            else {
+                throw new Exception('Invalid argument for '.self::class.'::'.__FUNCTION__);
+            }
+        }
+        else {
+            throw new Exception('Invalid argument for '.self::class.'::'.__FUNCTION__);
         }
 
-        return false;
+        return true;
     }
 
     public function include($name, $data = [])
