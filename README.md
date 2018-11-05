@@ -220,7 +220,7 @@ You can also set the attribute "singleton" on the script tag to make sure that t
 
 In order to integrate the rendering of the component into different templating systems you will most likely need to extend the Component class (implement ComponentInterface) and change the class the ComponentManager uses to instance Components automatically.
 
-```
+```php
 // Either set it when creating the ComponentManager
 $manager = new ComponentManager($compiler, MyCustomComponent::class);
 
