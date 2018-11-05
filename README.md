@@ -197,8 +197,6 @@ Would result in...
 </section>
 ```
 
-Although no emmet rules are stripped out only the first root node will be used. So if siblings (+) or children (>) are also entered then they will most likely be disregarded during compilation.
-
 To make sure that the scripts only run once per component, or if all are compiled into one file, you want some way to control so that the component script is only executed upon inclusion. The ScriptScope filter has some extra helper methods for this. These must run after all components have been included, so either in head if you're using a template system that parses templates from the bottom up or in the footer of the body.
 
 ```html
