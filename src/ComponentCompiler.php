@@ -202,13 +202,11 @@ class ComponentCompiler
 
             // Only compile if cache is invalid
             if (! $this->validateCache($name, $path)) {
-                // Make sure cacheMap entry exists and has keys set
-                if (! is_array($this->cacheMap[$path] ?? null)) {
-                    $this->cacheMap[$path] = [
-                        'tests' => [$path],
-                        'mtime' => 0,
-                    ];
-                }
+                // Reset cacheMap entry
+                $this->cacheMap[$path] = [
+                    'tests' => [$path],
+                    'mtime' => 0,
+                ];
 
                 $tags = $this->parseSingleFileComponent($path, $componentInfo, true);
 
