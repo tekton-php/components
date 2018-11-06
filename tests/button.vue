@@ -1,6 +1,4 @@
-<template lang="blade">
-    <button>Text</button>
-</template>
+<template lang="blade" src="sub/button-template.html" />
 
 <style lang="scss">
     $myColor: #00ff00;

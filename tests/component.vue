@@ -1,6 +1,6 @@
 <template lang="php">
     <div id="myElement">
-        @if ($aboo)
+        @if ($foobar)
             <h1>My Heading</h1>
         @endif
     </div>

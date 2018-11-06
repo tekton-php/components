@@ -26,6 +26,7 @@ $manager->register(glob(__DIR__.DS.'*.vue'), __DIR__);
 </head>
 <body>
     <?php
+        echo $compiler->getLastCacheUpdate();
         echo $manager->include('component');
         echo $manager->include('component');
         echo $manager->include('button');

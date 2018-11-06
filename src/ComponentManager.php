@@ -37,8 +37,13 @@ class ComponentManager
 
     protected function createComponent($name, $resources)
     {
-        $class = $this->componentClass;
-        $component = new $class($resources);
+        if ($resources instanceof Component) {
+            $component = $resources;
+        }
+        else {
+            $class = $this->componentClass;
+            $component = new $class($resources);
+        }
 
         if (is_string($name)) {
             $component->setName($name);
@@ -147,8 +152,7 @@ class ComponentManager
         if (is_string($primary)) {
             // name + component
             if (! isset($this->components[$primary]) && $secondary instanceof ComponentInterface) {
-                $component->setName($primary);
-                $this->components[$primary] = $secondary;
+                $this->components[$primary] = $this->createComponent($primary, $secondary);
             }
             // single file component path + base path
             elseif (file_exists($primary)) {
@@ -170,7 +174,7 @@ class ComponentManager
             // name => component array
             if ($component instanceof Component) {
                 foreach ($primary as $name => $component) {
-                    $this->components[$name] = $component;
+                    $this->components[$name] = $this->createComponent($name, $component);
                 }
             }
             // name => resources array

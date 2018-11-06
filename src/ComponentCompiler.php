@@ -56,7 +56,7 @@ class ComponentCompiler
     {
         $this->componentMap = [];
         $this->cacheMap = [];
-        
+
         $di = new RecursiveDirectoryIterator($this->cacheDir, FilesystemIterator::SKIP_DOTS);
         $ri = new RecursiveIteratorIterator($di, RecursiveIteratorIterator::CHILD_FIRST);
 
@@ -65,6 +65,11 @@ class ComponentCompiler
         }
 
         return true;
+    }
+
+    public function getLastCacheUpdate()
+    {
+        return max(array_column($this->cacheMap ?: [['mtime' => false]], 'mtime'));
     }
 
     public function registerTags($name, $class)
@@ -118,6 +123,11 @@ class ComponentCompiler
                 }
 
                 if (! empty($tagPath)) {
+                    // Add to tests for cache validation
+                    if (! in_array($tagPath, $this->cacheMap[$path]['tests'])) {
+                        $this->cacheMap[$path]['tests'][] = $tagPath;
+                    }
+
                     $content = file_get_contents($tagPath);
                 }
             }
@@ -138,6 +148,21 @@ class ComponentCompiler
 		libxml_clear_errors();
 
         return $tags;
+    }
+
+    public function validateCache($name, $path)
+    {
+        if (! isset($this->componentMap[$name]) || ! isset($this->cacheMap[$path])) {
+            return false;
+        }
+
+        foreach ($this->cacheMap[$path]['tests'] as $file) {
+            if (filemtime($file) > $this->cacheMap[$path]['mtime']) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public function compile($path, $basePath = null)
@@ -162,7 +187,15 @@ class ComponentCompiler
             $name = $componentInfo->name;
 
             // Only compile if cache is invalid
-            if (! isset($this->componentMap[$name]) || ! isset($this->cacheMap[$path]) || filemtime($path) > $this->cacheMap[$path]) {
+            if (! $this->validateCache($name, $path)) {
+                // Make sure cacheMap entry exists and has keys set
+                if (! is_array($this->cacheMap[$path] ?? null)) {
+                    $this->cacheMap[$path] = [
+                        'tests' => [$path],
+                        'mtime' => 0,
+                    ];
+                }
+
                 $tags = $this->parseSingleFileComponent($path, $componentInfo);
 
                 if (empty($tags)) {
@@ -191,7 +224,7 @@ class ComponentCompiler
                             throw new Exception('Failed to write cache file: '.$cachePath);
                         }
 
-                        $this->cacheMap[$path] = filemtime($cachePath);
+                        $this->cacheMap[$path]['mtime'] = filemtime($cachePath);
                     }
                 }
 
