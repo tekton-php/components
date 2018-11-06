@@ -86,8 +86,20 @@ class ComponentCompiler
         return $this;
     }
 
-    protected function parseSingleFileComponent($path, ComponentInfo $componentInfo)
+    public function parseSingleFileComponent($path, $componentInfo = null, $updateCacheMap = false)
     {
+        // path + base path
+        if (is_string($componentInfo)) {
+            $componentInfo = new ComponentInfo($path, $componentInfo);
+        }
+        // path
+        elseif (is_null($componentInfo)) {
+            $componentInfo = new ComponentInfo($path, dirname($path));
+        }
+        elseif (! $componentInfo instanceof ComponentInfo) {
+            throw new Exception('Second argument to '.__FUNCTION__.' must be either a base path or '.ComponentInfo::class);
+        }
+
         // Configure DOMDocument
         $xmlStateEntityLoader = libxml_disable_entity_loader(true);
 		$xmlStateInternalErrors = libxml_use_internal_errors(true);
@@ -124,8 +136,10 @@ class ComponentCompiler
 
                 if (! empty($tagPath)) {
                     // Add to tests for cache validation
-                    if (! in_array($tagPath, $this->cacheMap[$path]['tests'])) {
-                        $this->cacheMap[$path]['tests'][] = $tagPath;
+                    if ($updateCacheMap && isset($this->cacheMap[$path])) {
+                        if (! in_array($tagPath, $this->cacheMap[$path]['tests'])) {
+                            $this->cacheMap[$path]['tests'][] = $tagPath;
+                        }
                     }
 
                     $content = file_get_contents($tagPath);
@@ -196,7 +210,7 @@ class ComponentCompiler
                     ];
                 }
 
-                $tags = $this->parseSingleFileComponent($path, $componentInfo);
+                $tags = $this->parseSingleFileComponent($path, $componentInfo, true);
 
                 if (empty($tags)) {
                     unset($this->cacheMap[$path]);
