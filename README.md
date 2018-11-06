@@ -134,6 +134,9 @@ if (! file_exists($cacheScripts)) {
 
 echo '<script src="'.$cacheScripts.'"></script>';
 
+// You can validate your combined script by comparing modification time with...
+$mtime = $compiler->getLastCacheUpdate();
+
 // Or include every file separately per request and only load those that have
 // been included in the page
 foreach ($manager->includedResources('script') as $name => $script) {
