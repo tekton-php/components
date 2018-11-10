@@ -13,6 +13,7 @@ class ScssFilter extends AbstractFilter
     {
         $this->scss = new Compiler();
     }
+    
     public function match(TagInfo $info)
     {
         if ($lang = $info->attributes['lang'] ?? false) {
