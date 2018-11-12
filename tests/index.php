@@ -16,6 +16,7 @@ $compiler = new ComponentCompiler($cacheDir);
 $compiler->registerTags('template', (new TemplateTag)->addPostFilter(new TemplateScope));
 $compiler->registerTags('style', (new StyleTag)->addPostFilter(new ScssFilter)->addPostFilter(new StyleScope));
 $compiler->registerTags('script', (new ScriptTag)->addPostFilter(new ScriptScope));
+$compiler->setIgnoreCacheTime(false);
 
 $manager = new ComponentManager($compiler);
 

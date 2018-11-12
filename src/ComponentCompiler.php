@@ -14,6 +14,7 @@ class ComponentCompiler
     protected $cacheDir;
     protected $cacheMap = [];
     protected $cacheMapPath;
+    protected $ignoreCacheTime = false;
     protected $componentMapPath;
     protected $componentMap = [];
     protected $tags;
@@ -35,6 +36,18 @@ class ComponentCompiler
         if (file_exists($this->cacheMapPath)) {
             $this->cacheMap = include $this->cacheMapPath;
         }
+    }
+
+    public function getIgnoreCacheTime()
+    {
+        return $this->ignoreCacheTime;
+    }
+
+    public function setIgnoreCacheTime($ignore)
+    {
+        $this->ignoreCacheTime = (bool) $ignore;
+
+        return $this;
     }
 
     public function getComponentMap()
@@ -64,7 +77,7 @@ class ComponentCompiler
             $file->isDir() ? rmdir($file->getPathname()) : unlink($file->getPathname());
         }
 
-        return true;
+        return $this;
     }
 
     public function getLastCacheUpdate()
@@ -170,9 +183,11 @@ class ComponentCompiler
             return false;
         }
 
-        foreach ($this->cacheMap[$path]['tests'] as $file) {
-            if (filemtime($file) > $this->cacheMap[$path]['mtime']) {
-                return false;
+        if (! $this->ignoreCacheTime) {
+            foreach ($this->cacheMap[$path]['tests'] as $file) {
+                if (filemtime($file) > $this->cacheMap[$path]['mtime']) {
+                    return false;
+                }
             }
         }
 
