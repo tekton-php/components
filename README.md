@@ -88,6 +88,12 @@ $components = $manager->find('cache/', [
 $manager->register($components);
 ```
 
+If you for example only want to test for file changes in a development environment and in production want to avoid stating files and instead simply clear the cache on every release, you can set the compiler to ignore file modification time when validating the cache and so only compiles files if they haven't been compiled before.
+
+```php
+$compiler->setIgnoreCacheTime(true);
+```
+
 ### Using components
 
 To include a component into the page you simply call.
