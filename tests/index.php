@@ -48,3 +48,4 @@ $manager->register(glob(__DIR__.DS.'*.vue'), __DIR__);
         <?= ScriptScope::getScopeScript(); ?>
     </script>
 </body>
+</html>

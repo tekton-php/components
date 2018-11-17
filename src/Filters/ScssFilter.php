@@ -13,7 +13,7 @@ class ScssFilter extends AbstractFilter
     {
         $this->scss = new Compiler();
     }
-    
+
     public function match(TagInfo $info)
     {
         if ($lang = $info->attributes['lang'] ?? false) {
@@ -28,7 +28,10 @@ class ScssFilter extends AbstractFilter
     public function process(TagInfo $info)
     {
         try {
-            $info->content = $this->scss->compile($info->content);
+            $scss = clone $this->scss;
+            $scss->addImportPath(dirname($info->path));
+
+            $info->content = $scss->compile($info->content);
         }
         catch (Exception $e) {
             // Do nothing

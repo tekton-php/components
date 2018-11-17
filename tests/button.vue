@@ -6,6 +6,8 @@
     #myElement {
         color: $myColor;
     }
+
+    @import "included";
 </style>
 
 <script>
